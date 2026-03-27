@@ -1,0 +1,773 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Swasthya Setu API - Child vaccination and health management platform
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: users
+    description: User management
+  - name: children
+    description: Child profile management
+  - name: vaccines
+    description: Vaccine and schedule management
+  - name: bookings
+    description: Vaccine booking system
+  - name: centers
+    description: Health center discovery
+  - name: records
+    description: Health records management
+  - name: ai
+    description: AI health assistant
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /users/profile:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      operationId: updateUserProfile
+      tags: [users]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserProfile"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /children:
+    get:
+      operationId: listChildren
+      tags: [children]
+      summary: List all children
+      responses:
+        "200":
+          description: List of children
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Child"
+    post:
+      operationId: createChild
+      tags: [children]
+      summary: Add a new child profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChild"
+      responses:
+        "201":
+          description: Created child
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+
+  /children/{childId}:
+    get:
+      operationId: getChild
+      tags: [children]
+      summary: Get child profile
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Child profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+    put:
+      operationId: updateChild
+      tags: [children]
+      summary: Update child profile
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChild"
+      responses:
+        "200":
+          description: Updated child
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+    delete:
+      operationId: deleteChild
+      tags: [children]
+      summary: Delete child profile
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+
+  /children/{childId}/vaccine-schedule:
+    get:
+      operationId: getVaccineSchedule
+      tags: [vaccines]
+      summary: Get vaccine schedule for a child
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Vaccine schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VaccineSchedule"
+
+  /children/{childId}/vaccines/{vaccineId}/complete:
+    post:
+      operationId: markVaccineComplete
+      tags: [vaccines]
+      summary: Mark a vaccine as completed
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: vaccineId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkVaccineComplete"
+      responses:
+        "200":
+          description: Vaccine marked complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VaccineRecord"
+
+  /vaccines:
+    get:
+      operationId: listVaccines
+      tags: [vaccines]
+      summary: List all vaccines
+      responses:
+        "200":
+          description: List of vaccines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VaccineInfo"
+
+  /centers:
+    get:
+      operationId: listCenters
+      tags: [centers]
+      summary: List nearby health centers
+      parameters:
+        - name: pincode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: lng
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HealthCenter"
+
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List all bookings
+      responses:
+        "200":
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a vaccine booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBooking"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  /bookings/{bookingId}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get booking details
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+    delete:
+      operationId: cancelBooking
+      tags: [bookings]
+      summary: Cancel a booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking cancelled
+
+  /records/{childId}:
+    get:
+      operationId: getHealthRecords
+      tags: [records]
+      summary: Get health records for a child
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Health records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthRecords"
+
+  /ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: Send message to AI health assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessage"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [children]
+      summary: Get family dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        language:
+          type: string
+          enum: [en, hi, mr]
+        notificationsEnabled:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - phone
+        - language
+        - notificationsEnabled
+        - createdAt
+
+    UpdateUserProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        language:
+          type: string
+          enum: [en, hi, mr]
+        notificationsEnabled:
+          type: boolean
+
+    Child:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        dob:
+          type: string
+        gender:
+          type: string
+          enum: [male, female, other]
+        bloodGroup:
+          type: string
+        completedVaccines:
+          type: integer
+        totalVaccines:
+          type: integer
+        status:
+          type: string
+          enum: [safe, due, missed]
+        nextVaccineDate:
+          type: string
+        nextVaccineName:
+          type: string
+      required:
+        - id
+        - name
+        - dob
+        - gender
+        - completedVaccines
+        - totalVaccines
+        - status
+
+    CreateChild:
+      type: object
+      properties:
+        name:
+          type: string
+        dob:
+          type: string
+        gender:
+          type: string
+          enum: [male, female, other]
+        bloodGroup:
+          type: string
+      required:
+        - name
+        - dob
+        - gender
+
+    VaccineSchedule:
+      type: object
+      properties:
+        childId:
+          type: string
+        childName:
+          type: string
+        childDob:
+          type: string
+        completedCount:
+          type: integer
+        totalCount:
+          type: integer
+        dueToday:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledVaccine"
+        dueThisWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledVaccine"
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledVaccine"
+        missed:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledVaccine"
+        completed:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledVaccine"
+      required:
+        - childId
+        - childName
+        - childDob
+        - completedCount
+        - totalCount
+        - dueToday
+        - dueThisWeek
+        - upcoming
+        - missed
+        - completed
+
+    ScheduledVaccine:
+      type: object
+      properties:
+        id:
+          type: string
+        vaccineId:
+          type: string
+        name:
+          type: string
+        scheduledDate:
+          type: string
+        ageWeeks:
+          type: integer
+        ageLabel:
+          type: string
+        status:
+          type: string
+          enum: [due_today, due_this_week, upcoming, missed, completed]
+        isMandatory:
+          type: boolean
+        completedDate:
+          type: string
+        centerName:
+          type: string
+      required:
+        - id
+        - vaccineId
+        - name
+        - scheduledDate
+        - ageWeeks
+        - ageLabel
+        - status
+        - isMandatory
+
+    MarkVaccineComplete:
+      type: object
+      properties:
+        completedDate:
+          type: string
+        centerName:
+          type: string
+        notes:
+          type: string
+      required:
+        - completedDate
+
+    VaccineRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        childId:
+          type: string
+        vaccineId:
+          type: string
+        vaccineName:
+          type: string
+        completedDate:
+          type: string
+        centerName:
+          type: string
+        notes:
+          type: string
+      required:
+        - id
+        - childId
+        - vaccineId
+        - vaccineName
+        - completedDate
+
+    VaccineInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ageWeeks:
+          type: integer
+        ageLabel:
+          type: string
+        isMandatory:
+          type: boolean
+        description:
+          type: string
+        sideEffects:
+          type: string
+        diseases:
+          type: string
+      required:
+        - id
+        - name
+        - ageWeeks
+        - ageLabel
+        - isMandatory
+        - description
+        - sideEffects
+        - diseases
+
+    HealthCenter:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        distance:
+          type: string
+        type:
+          type: string
+          enum: [government, phc, private]
+        isFree:
+          type: boolean
+        cost:
+          type: string
+        phone:
+          type: string
+        vaccinesAvailable:
+          type: array
+          items:
+            type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        openHours:
+          type: string
+      required:
+        - id
+        - name
+        - address
+        - distance
+        - type
+        - isFree
+        - vaccinesAvailable
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        childId:
+          type: string
+        childName:
+          type: string
+        vaccineId:
+          type: string
+        vaccineName:
+          type: string
+        centerId:
+          type: string
+        centerName:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, cancelled, completed]
+        appointmentId:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - childId
+        - childName
+        - vaccineId
+        - vaccineName
+        - centerId
+        - centerName
+        - date
+        - time
+        - status
+        - appointmentId
+        - createdAt
+
+    CreateBooking:
+      type: object
+      properties:
+        childId:
+          type: string
+        vaccineId:
+          type: string
+        centerId:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+      required:
+        - childId
+        - vaccineId
+        - centerId
+        - date
+        - time
+
+    HealthRecords:
+      type: object
+      properties:
+        childId:
+          type: string
+        vaccinations:
+          type: array
+          items:
+            $ref: "#/components/schemas/VaccineRecord"
+        totalCompleted:
+          type: integer
+        totalScheduled:
+          type: integer
+      required:
+        - childId
+        - vaccinations
+        - totalCompleted
+        - totalScheduled
+
+    ChatMessage:
+      type: object
+      properties:
+        message:
+          type: string
+        childId:
+          type: string
+      required:
+        - message
+
+    ChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        type:
+          type: string
+          enum: [info, warning, emergency, home_remedy]
+        suggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - reply
+        - type
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalChildren:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Child"
+        todayAction:
+          type: string
+        upcomingCount:
+          type: integer
+        missedCount:
+          type: integer
+      required:
+        - totalChildren
+        - children
+        - todayAction
+        - upcomingCount
+        - missedCount

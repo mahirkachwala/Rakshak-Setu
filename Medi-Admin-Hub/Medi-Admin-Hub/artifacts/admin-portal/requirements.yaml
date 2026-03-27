@@ -1,0 +1,19 @@
+packages:
+  "recharts": "For rendering beautiful statistics charts on the dashboard"
+  "date-fns": "For formatting and manipulating dates consistently"
+  "framer-motion": "For page transitions and polished micro-interactions"
+  "clsx": "For conditional tailwind class merging"
+  "tailwind-merge": "For merging tailwind classes without conflicts"
+
+images:
+  - path: "artifacts/admin-portal/public/images/logo.png"
+    description: "A minimal, modern medical logo mark featuring a stylized cross or shield in vibrant blue and teal gradient, transparent background, highly polished"
+    aspect_ratio: "1:1"
+  - path: "artifacts/admin-portal/public/images/auth-bg.png"
+    description: "Abstract, clean, and professional medical background with soft light blue and white gradients, subtle geometric shapes or waves, clinical and premium feel"
+    aspect_ratio: "16:9"
+
+notes:
+  - "The app uses a JWT token returned from /api/auth/login. It is stored in localStorage."
+  - "Since we use generated hooks, we will pass the token in the `request` options object for authenticated endpoints."
+  - "Assuming `date-fns` is used for date parsing and formatting."

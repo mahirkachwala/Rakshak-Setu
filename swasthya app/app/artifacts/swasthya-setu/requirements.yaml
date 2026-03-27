@@ -1,0 +1,22 @@
+packages:
+  "framer-motion": "For fluid, app-like page transitions and micro-interactions"
+  "date-fns": "For formatting vaccination dates and calculating ages"
+  "zustand": "For lightweight global state (active child, language)"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for safely merging tailwind classes"
+
+images:
+  - path: "artifacts/swasthya-setu/public/images/hero-health.png"
+    description: "A warm, stylized, vector flat illustration of an Indian mother gently holding a healthy smiling baby, medical shield background, soft greens and warm yellows"
+    aspect_ratio: "16:9"
+  - path: "artifacts/swasthya-setu/public/images/ai-avatar.png"
+    description: "A friendly, cute robot doctor mascot head, floating, 3D modern style, medical cross badge, soft lighting"
+    aspect_ratio: "1:1"
+  - path: "artifacts/swasthya-setu/public/images/emergency-bg.png"
+    description: "Abstract soft red gradient background with subtle medical cross patterns and pulse waves"
+    aspect_ratio: "9:16"
+
+notes:
+  - "The app uses React Query generated hooks from @workspace/api-client-react"
+  - "Using Zustand for global active child and language state to avoid prop drilling"
+  - "UI is constrained to a mobile max-width (max-w-md) to mimic a native app experience"

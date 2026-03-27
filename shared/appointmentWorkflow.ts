@@ -289,16 +289,20 @@ export type CenterResponse = {
   state?: string;
 };
 
+const repoDataDir = path.resolve(import.meta.dirname, "..", "data");
 const downloadsDir = path.resolve(import.meta.dirname, "..", "..");
+const dataDir = existsSync(path.join(repoDataDir, "users.json"))
+  ? repoDataDir
+  : downloadsDir;
 
 const tableFiles = {
-  users: path.join(downloadsDir, "users.json"),
-  children: path.join(downloadsDir, "children.json"),
-  vaccines: path.join(downloadsDir, "vaccines.json"),
-  vaccineRecords: path.join(downloadsDir, "vaccine_records.json"),
-  centers: path.join(downloadsDir, "centers.json"),
-  bookings: path.join(downloadsDir, "bookings.json"),
-  slots: path.join(downloadsDir, "slots.json"),
+  users: path.join(dataDir, "users.json"),
+  children: path.join(dataDir, "children.json"),
+  vaccines: path.join(dataDir, "vaccines.json"),
+  vaccineRecords: path.join(dataDir, "vaccine_records.json"),
+  centers: path.join(dataDir, "centers.json"),
+  bookings: path.join(dataDir, "bookings.json"),
+  slots: path.join(dataDir, "slots.json"),
 } as const;
 
 const portalUsers: PortalUser[] = [

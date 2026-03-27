@@ -1,0 +1,883 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Swasthya Setu Doctor/Admin Portal API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: appointments
+    description: Appointment management
+  - name: patients
+    description: Patient and child records
+  - name: slots
+    description: Slot management
+  - name: centers
+    description: Center management
+  - name: vaccinations
+    description: Vaccination records
+  - name: dashboard
+    description: Dashboard stats
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      parameters:
+        - name: centerId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /appointments:
+    get:
+      operationId: getAppointments
+      tags: [appointments]
+      summary: Get appointments
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: vaccine
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: centerId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}:
+    get:
+      operationId: getAppointment
+      tags: [appointments]
+      summary: Get appointment by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Appointment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}/status:
+    patch:
+      operationId: updateAppointmentStatus
+      tags: [appointments]
+      summary: Update appointment status (legacy)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+      responses:
+        "200":
+          description: Updated appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}/checkin:
+    post:
+      operationId: checkinAppointment
+      tags: [appointments]
+      summary: Check in patient (BOOKED → CHECKED_IN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /appointments/{id}/vaccinate:
+    post:
+      operationId: vaccinateAppointment
+      tags: [appointments]
+      summary: Mark as vaccinated (CHECKED_IN → VACCINATED)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VaccinateRequest"
+      responses:
+        "200":
+          description: Marked vaccinated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /appointments/{id}/complete:
+    post:
+      operationId: completeAppointment
+      tags: [appointments]
+      summary: Complete record (VACCINATED → COMPLETED)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /appointments/{id}/cancel:
+    post:
+      operationId: cancelAppointment
+      tags: [appointments]
+      summary: Cancel appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelRequest"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          description: Cannot cancel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /appointments/{id}/reschedule:
+    post:
+      operationId: rescheduleAppointment
+      tags: [appointments]
+      summary: Reschedule appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleRequest"
+      responses:
+        "200":
+          description: New appointment after reschedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          description: Cannot reschedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /patients:
+    get:
+      operationId: getPatients
+      tags: [patients]
+      summary: Get all children/patients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of children
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Child"
+
+  /patients/{id}:
+    get:
+      operationId: getPatient
+      tags: [patients]
+      summary: Get child record by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Child record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChildDetail"
+
+  /slots:
+    get:
+      operationId: getSlots
+      tags: [slots]
+      summary: Get slots
+      parameters:
+        - name: centerId
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+    post:
+      operationId: createSlot
+      tags: [slots]
+      summary: Create a slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSlotRequest"
+      responses:
+        "201":
+          description: Created slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+
+  /slots/{id}:
+    delete:
+      operationId: deleteSlot
+      tags: [slots]
+      summary: Delete a slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /centers:
+    get:
+      operationId: getCenters
+      tags: [centers]
+      summary: Get all centers
+      responses:
+        "200":
+          description: List of centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Center"
+    post:
+      operationId: createCenter
+      tags: [centers]
+      summary: Create a center
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCenterRequest"
+      responses:
+        "201":
+          description: Created center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+
+  /centers/{id}:
+    put:
+      operationId: updateCenter
+      tags: [centers]
+      summary: Update a center
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCenterRequest"
+      responses:
+        "200":
+          description: Updated center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+
+  /vaccinations:
+    get:
+      operationId: getVaccinations
+      tags: [vaccinations]
+      summary: Get vaccination records
+      parameters:
+        - name: childId
+          in: query
+          schema:
+            type: string
+        - name: centerId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of vaccination records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VaccinationRecord"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [doctor, staff, admin]
+        centerId:
+          type: string
+        centerName:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - role
+
+    DashboardStats:
+      type: object
+      properties:
+        totalToday:
+          type: integer
+        completed:
+          type: integer
+        pending:
+          type: integer
+        missed:
+          type: integer
+        totalPatients:
+          type: integer
+        upcomingAppointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
+      required:
+        - totalToday
+        - completed
+        - pending
+        - missed
+        - totalPatients
+        - upcomingAppointments
+
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: string
+        childName:
+          type: string
+        parentName:
+          type: string
+        parentPhone:
+          type: string
+        vaccine:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        centerName:
+          type: string
+        centerId:
+          type: string
+        status:
+          type: string
+          enum: [booked, checked_in, vaccinated, completed, cancelled, rescheduled, no_show, pending, missed]
+        secretCode:
+          type: string
+        referenceId:
+          type: string
+        childId:
+          type: string
+        childDob:
+          type: string
+        address:
+          type: string
+        notes:
+          type: string
+        cancelReason:
+          type: string
+        checkinTime:
+          type: string
+        vaccinationTime:
+          type: string
+        parentAppointmentId:
+          type: string
+      required:
+        - id
+        - childName
+        - parentName
+        - vaccine
+        - date
+        - time
+        - centerName
+        - centerId
+        - status
+        - secretCode
+        - referenceId
+
+    UpdateStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, completed, missed]
+        notes:
+          type: string
+      required:
+        - status
+
+    VaccinateRequest:
+      type: object
+      properties:
+        batchNumber:
+          type: string
+        notes:
+          type: string
+
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+        - reason
+
+    RescheduleRequest:
+      type: object
+      properties:
+        newDate:
+          type: string
+        newTime:
+          type: string
+        newSlotId:
+          type: string
+      required:
+        - newDate
+        - newTime
+
+    Child:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        dob:
+          type: string
+        gender:
+          type: string
+        parentName:
+          type: string
+        parentPhone:
+          type: string
+        address:
+          type: string
+        centerId:
+          type: string
+        totalVaccines:
+          type: integer
+        completedVaccines:
+          type: integer
+        missedVaccines:
+          type: integer
+      required:
+        - id
+        - name
+        - dob
+        - parentName
+
+    ChildDetail:
+      type: object
+      properties:
+        child:
+          $ref: "#/components/schemas/Child"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
+        vaccinationHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/VaccinationRecord"
+      required:
+        - child
+        - appointments
+        - vaccinationHistory
+
+    Slot:
+      type: object
+      properties:
+        id:
+          type: string
+        centerId:
+          type: string
+        centerName:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+        booked:
+          type: integer
+        available:
+          type: integer
+      required:
+        - id
+        - centerId
+        - date
+        - startTime
+        - endTime
+        - capacity
+        - booked
+        - available
+
+    CreateSlotRequest:
+      type: object
+      properties:
+        centerId:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+      required:
+        - centerId
+        - date
+        - startTime
+        - endTime
+        - capacity
+
+    Center:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        type:
+          type: string
+          enum: [PHC, UPHC, CHC, Hospital]
+        timing:
+          type: string
+        services:
+          type: array
+          items:
+            type: string
+        phone:
+          type: string
+        district:
+          type: string
+        state:
+          type: string
+      required:
+        - id
+        - name
+        - address
+        - type
+        - services
+
+    CreateCenterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        type:
+          type: string
+          enum: [PHC, UPHC, CHC, Hospital]
+        timing:
+          type: string
+        services:
+          type: array
+          items:
+            type: string
+        phone:
+          type: string
+        district:
+          type: string
+        state:
+          type: string
+      required:
+        - name
+        - address
+        - type
+        - services
+
+    VaccinationRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        childId:
+          type: string
+        childName:
+          type: string
+        vaccine:
+          type: string
+        date:
+          type: string
+        centerId:
+          type: string
+        centerName:
+          type: string
+        administeredBy:
+          type: string
+        batchNumber:
+          type: string
+        notes:
+          type: string
+        appointmentId:
+          type: string
+      required:
+        - id
+        - childId
+        - childName
+        - vaccine
+        - date
+        - centerId
+        - centerName

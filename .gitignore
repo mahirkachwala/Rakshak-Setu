@@ -1,0 +1,32 @@
+# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/.cache/
+
+# Logs
+*.log
+*.err.log
+*.out.log
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local tool state
+**/.local/
+**/.agents/
+**/.replit-artifact/
+
+# Nested repo metadata from imported projects
+**/.git/
+
+# Imported workspace dumps not needed for runtime/deployment
+**/attached_assets/
+**/artifacts/mockup-sandbox/
+
+# OS files
+.DS_Store
+Thumbs.db
