@@ -445,7 +445,7 @@ export default function Centers() {
               onClick={() => void handleSearchVoiceInput()}
               disabled={voiceSearching}
               className="absolute right-8 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-primary disabled:opacity-60"
-              title="Voice search"
+              aria-label={copy.searchPlaceholder}
             >
               {voiceSearching ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
             </button>
@@ -581,12 +581,6 @@ export default function Centers() {
             {shouldShowMapMarkers && (
               <div className="absolute top-2 right-2 z-[500] bg-primary text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow">
                 {copy.shown(mapFacilities.length)}
-              </div>
-            )}
-            {!shouldShowMapMarkers && (
-              <div className="absolute left-3 right-3 top-3 z-[500] rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
-                <p className="text-xs font-semibold text-slate-900">{copy.searchPlaceholder}</p>
-                <p className="text-[11px] text-slate-500">{copy.useMyLocation}</p>
               </div>
             )}
           </div>

@@ -12,7 +12,9 @@ import { getGreeting } from '@/lib/utils';
 import { useAppStore } from '@/store';
 import { getSavedBookings, cancelBooking, SavedBooking } from '@/components/BookingModal';
 import { LiveAppointmentHistory, LiveBookedAppointments } from '@/components/home/LiveAppointments';
+import { PinStatusCard } from '@/pages/PinStatus';
 import { jsPDF } from 'jspdf';
+import type { Language } from '@/store';
 
 function buildPDF(b: SavedBooking, isCancelled: boolean) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -412,6 +414,26 @@ const HomeBabyIllus = () => (
   </svg>
 );
 
+const HOME_COPY: Record<Language, {
+  next: string;
+  today: string;
+  inDays: (days: number) => string;
+  vaccineHint: string;
+}> = {
+  en: { next: 'Next', today: 'Today', inDays: (days) => `In ${days}d`, vaccineHint: 'Check vial safety' },
+  hi: { next: 'अगला', today: 'आज', inDays: (days) => `${days} दिन में`, vaccineHint: 'वायल सुरक्षा जांचें' },
+  mr: { next: 'पुढील', today: 'आज', inDays: (days) => `${days} दिवसांनी`, vaccineHint: 'व्हायल सुरक्षित आहे का पाहा' },
+  bn: { next: 'পরবর্তী', today: 'আজ', inDays: (days) => `${days} দিনের মধ্যে`, vaccineHint: 'ভায়াল নিরাপত্তা দেখুন' },
+  te: { next: 'తదుపరి', today: 'ఈ రోజు', inDays: (days) => `${days} రోజుల్లో`, vaccineHint: 'వయల్ సురక్షితమా చూడండి' },
+  ta: { next: 'அடுத்து', today: 'இன்று', inDays: (days) => `${days} நாளில்`, vaccineHint: 'வயல் பாதுகாப்பை பார்க்கவும்' },
+  kn: { next: 'ಮುಂದಿನದು', today: 'ಇಂದು', inDays: (days) => `${days} ದಿನಗಳಲ್ಲಿ`, vaccineHint: 'ವಯಲ್ ಸುರಕ್ಷತೆ ನೋಡಿ' },
+  gu: { next: 'આગળનું', today: 'આજે', inDays: (days) => `${days} દિવસમાં`, vaccineHint: 'વાયલ સલામતી તપાસો' },
+  ml: { next: 'അടുത്തത്', today: 'ഇന്ന്', inDays: (days) => `${days} ദിവസത്തിൽ`, vaccineHint: 'വയൽ സുരക്ഷ നോക്കൂ' },
+  pa: { next: 'ਅਗਲਾ', today: 'ਅੱਜ', inDays: (days) => `${days} ਦਿਨ ਵਿੱਚ`, vaccineHint: 'ਵਾਇਲ ਸੁਰੱਖਿਆ ਵੇਖੋ' },
+  or: { next: 'ପରବର୍ତ୍ତୀ', today: 'ଆଜି', inDays: (days) => `${days} ଦିନରେ`, vaccineHint: 'ଭାଇଆଲ ସୁରକ୍ଷା ଦେଖନ୍ତୁ' },
+  as: { next: 'পৰৱৰ্তী', today: 'আজি', inDays: (days) => `${days} দিনত`, vaccineHint: 'ভায়েল সুৰক্ষা চাওক' },
+};
+
 export default function Home() {
   const { t } = useTranslation();
   const language = useAppStore(state => state.language);
@@ -430,6 +452,7 @@ export default function Home() {
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date());
   const [bookingKey, setBookingKey] = useState(0);
   const locale = language === 'en' ? 'en-IN' : `${language}-IN`;
+  const uiCopy = HOME_COPY[language] ?? HOME_COPY.en;
 
   const normalizedChildrenList = Array.isArray(childrenList) ? childrenList : [];
   const normalizedSummaryChildren = Array.isArray(summary?.children) ? summary.children : [];
@@ -563,7 +586,7 @@ export default function Home() {
                 </div>
                 {activeChild.nextVaccineName && (
                   <p className="text-[11px] text-gray-600 dark:text-gray-400">
-                    Next: <span className="font-semibold">{activeChild.nextVaccineName}</span>
+                    {uiCopy.next}: <span className="font-semibold">{activeChild.nextVaccineName}</span>
                     {activeChild.nextVaccineDate && <> · {new Date(activeChild.nextVaccineDate).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}</>}
                   </p>
                 )}
@@ -598,28 +621,20 @@ export default function Home() {
       )}
 
       <div className="p-4 space-y-4">
-
-        <Link href="/pin-status">
-          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-cyan-500 p-4 text-white shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
-                <ShieldAlert size={20} />
+        <section className="relative overflow-hidden rounded-[36px] bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.18),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fbff_100%)] p-1 shadow-[0_30px_70px_-50px_rgba(37,99,235,0.55)]">
+          <div className="rounded-[32px] border border-white/80 bg-white/90 p-3 backdrop-blur sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-blue-600">{uiCopy.vaccineHint}</p>
+                <h3 className="mt-1 text-lg font-black tracking-tight text-slate-900">{t('home')}</h3>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">Vial safety</p>
-                <h3 className="mt-1 text-lg font-black tracking-tight">Check vial code safety</h3>
-                <p className="mt-1 text-sm leading-6 text-blue-50">
-                  Enter the code printed at the bottom of the vial and see whether it is safe to use.
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center">
-                <div className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700">
-                  Open
-                </div>
+              <div className="hidden rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 sm:inline-flex">
+                {t('assistant')}
               </div>
             </div>
+            <PinStatusCard embedded />
           </div>
-        </Link>
+        </section>
 
         {/* MISSED VACCINES (if any) */}
         {missedVaccines.length > 0 && (
@@ -823,7 +838,7 @@ export default function Home() {
                       daysUntil <= 7 ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400' :
                       'bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
                     }`}>
-                      {daysUntil === 0 ? 'Today' : `In ${daysUntil}d`}
+                      {daysUntil === 0 ? uiCopy.today : uiCopy.inDays(daysUntil)}
                     </span>
                   </div>
                 );

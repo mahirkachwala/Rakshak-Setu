@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'wouter';
 import {
   ArrowDown,
-  ArrowLeft,
   Check,
   Loader2,
   Search,
@@ -337,7 +335,12 @@ function VialPinDemo({ hint }: { hint: string }) {
   );
 }
 
-export default function PinStatus() {
+type PinStatusCardProps = {
+  embedded?: boolean;
+  className?: string;
+};
+
+export function PinStatusCard({ embedded = false, className = '' }: PinStatusCardProps) {
   const language = useAppStore((state) => state.language);
   const copy = PIN_STATUS_COPY[language] ?? PIN_STATUS_COPY.en;
   const guideRef = useRef<SwasthyaSewaGuideHandle | null>(null);
@@ -413,7 +416,7 @@ export default function PinStatus() {
   const isSafe = outcomeState === 'safe';
 
   return (
-    <div className="min-h-full bg-gray-50 px-4 py-4 dark:bg-gray-950">
+    <div className={embedded ? className : `min-h-full bg-gray-50 px-4 py-4 dark:bg-gray-950 ${className}`.trim()}>
       <SwasthyaSewaGuide
         ref={guideRef}
         prompt={voicePrompt}
@@ -423,116 +426,123 @@ export default function PinStatus() {
         showUi={false}
       />
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-        <div className="flex items-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
-            <ArrowLeft size={16} />
-            {copy.back}
-          </Link>
-        </div>
+      <div className={`mx-auto flex w-full ${embedded ? 'max-w-none flex-col gap-3' : 'max-w-2xl flex-col gap-4'}`}>
+        <section className={`relative overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)] dark:border-gray-800 dark:bg-gray-900 ${embedded ? 'p-4 sm:p-5' : 'p-5'}`}>
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-100/60 blur-3xl dark:bg-blue-900/20" />
+          <div className="absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-cyan-100/60 blur-3xl dark:bg-cyan-900/20" />
 
-        <section className="rounded-[32px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
-                {copy.title}
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                {copy.helper}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void guideRef.current?.replay()}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
-            >
-              <Volume2 size={14} />
-              {copy.listenAgain}
-            </button>
-          </div>
-
-          <div className="mt-5">
-            <VialPinDemo hint={copy.codeHint} />
-          </div>
-
-          <div className="mt-5">
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                {copy.pinLabel}
-              </span>
-              <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white dark:border-gray-700 dark:bg-gray-800 dark:focus-within:bg-gray-900">
-                <Search size={18} className="text-gray-400" />
-                <input
-                  value={pin}
-                  onChange={(event) => setPin(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      void handleLookup();
-                    }
-                  }}
-                  inputMode="numeric"
-                  placeholder={copy.placeholder}
-                  className="w-full bg-transparent text-base font-semibold text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
-                />
+          <div className="relative flex flex-col gap-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="max-w-xl">
+                <p className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+                  {copy.pinLabel}
+                </p>
+                <h1 className={`mt-3 font-black tracking-tight text-gray-900 dark:text-white ${embedded ? 'text-xl sm:text-2xl' : 'text-2xl'}`}>
+                  {copy.title}
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  {copy.helper}
+                </p>
               </div>
-            </label>
 
-            <button
-              type="button"
-              onClick={() => void handleLookup()}
-              disabled={loading}
-              className="mt-3 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-              {copy.check}
-            </button>
-          </div>
-
-          {lookupError && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-              {lookupError}
+              <button
+                type="button"
+                onClick={() => void guideRef.current?.replay()}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+              >
+                <Volume2 size={14} />
+                {copy.listenAgain}
+              </button>
             </div>
-          )}
+
+            <div className={`grid gap-5 ${embedded ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-center' : ''}`}>
+              <div>
+                <VialPinDemo hint={copy.codeHint} />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {copy.pinLabel}
+                  </span>
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white dark:border-gray-700 dark:bg-gray-800 dark:focus-within:bg-gray-900">
+                    <Search size={18} className="text-gray-400" />
+                    <input
+                      value={pin}
+                      onChange={(event) => setPin(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void handleLookup();
+                        }
+                      }}
+                      inputMode="numeric"
+                      placeholder={copy.placeholder}
+                      className="w-full bg-transparent text-base font-semibold text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
+                    />
+                  </div>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => void handleLookup()}
+                  disabled={loading}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                  {copy.check}
+                </button>
+
+                {lookupError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                    {lookupError}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
 
         {payload && outcomeState && (
           <section
-            className={`rounded-[32px] border p-6 shadow-sm ${
+            className={`rounded-[32px] border p-5 shadow-sm ${
               isSafe
-                ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
-                : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
+                ? 'border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:border-green-900 dark:from-green-950/30 dark:to-emerald-950/20'
+                : 'border-red-200 bg-gradient-to-br from-red-50 to-rose-50 dark:border-red-900 dark:from-red-950/30 dark:to-rose-950/20'
             }`}
           >
-            <div className="flex flex-col items-center text-center">
-              <div
-                className={`flex h-28 w-28 items-center justify-center rounded-full bg-white shadow-sm ${
-                  isSafe
-                    ? 'text-green-600 dark:bg-gray-900 dark:text-green-400'
-                    : 'text-red-600 dark:bg-gray-900 dark:text-red-400'
-                }`}
-              >
-                {isSafe ? <Check size={72} strokeWidth={3.5} /> : <X size={72} strokeWidth={3.5} />}
+            <div className={`flex flex-col items-center text-center ${embedded ? 'sm:flex-row sm:items-center sm:justify-between sm:text-left' : ''}`}>
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
+                <div
+                  className={`flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-sm ${
+                    isSafe
+                      ? 'text-green-600 dark:bg-gray-900 dark:text-green-400'
+                      : 'text-red-600 dark:bg-gray-900 dark:text-red-400'
+                  }`}
+                >
+                  {isSafe ? <Check size={64} strokeWidth={3.5} /> : <X size={64} strokeWidth={3.5} />}
+                </div>
+
+                <div>
+                  <h2
+                    className={`text-2xl font-black tracking-tight ${
+                      isSafe ? 'text-green-800 dark:text-green-100' : 'text-red-800 dark:text-red-100'
+                    }`}
+                  >
+                    {isSafe ? copy.safeTitle : copy.unsafeTitle}
+                  </h2>
+
+                  <p
+                    className={`mt-2 text-sm font-semibold ${
+                      isSafe ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'
+                    }`}
+                  >
+                    {isSafe ? copy.safeSubtitle : copy.unsafeSubtitle}
+                  </p>
+                </div>
               </div>
 
-              <h2
-                className={`mt-5 text-3xl font-black tracking-tight ${
-                  isSafe ? 'text-green-800 dark:text-green-100' : 'text-red-800 dark:text-red-100'
-                }`}
-              >
-                {isSafe ? copy.safeTitle : copy.unsafeTitle}
-              </h2>
-
-              <p
-                className={`mt-2 text-base font-semibold ${
-                  isSafe ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'
-                }`}
-              >
-                {isSafe ? copy.safeSubtitle : copy.unsafeSubtitle}
-              </p>
-
-              <div className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200">
+              <div className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200 sm:mt-0">
                 {payload.container?.containerPin || payload.lookup?.value || pin.trim()}
               </div>
             </div>
@@ -541,4 +551,8 @@ export default function PinStatus() {
       </div>
     </div>
   );
+}
+
+export default function PinStatus() {
+  return <PinStatusCard />;
 }
