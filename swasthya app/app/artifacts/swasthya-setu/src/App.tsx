@@ -15,6 +15,7 @@ import Children from "@/pages/Children";
 import Settings from "@/pages/Settings";
 import Guidance from "@/pages/Guidance";
 import ABHA from "@/pages/ABHA";
+import PinStatus from "@/pages/PinStatus";
 import Onboarding from "@/pages/Onboarding";
 import NotFound from "@/pages/not-found";
 import {
@@ -59,6 +60,7 @@ function Router() {
         <Route path="/children" component={Children} />
         <Route path="/settings" component={Settings} />
         <Route path="/abha" component={ABHA} />
+        <Route path="/pin-status" component={PinStatus} />
         <Route path="/guidance" component={Guidance} />
         <Route component={NotFound} />
       </Switch>

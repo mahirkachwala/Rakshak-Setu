@@ -10,6 +10,11 @@ import {
   listSharedBookings,
   rescheduleSharedBooking,
 } from "../../../../../shared/appointmentWorkflow";
+import {
+  fetchHardwareMiddlewareInfo,
+  getHardwareMiddlewareConfig,
+  lookupHardwareContainerPin,
+} from "../../../../../shared/hardwareMiddleware";
 
 type UserRow = {
   id: number;
@@ -860,6 +865,44 @@ export function mockApiPlugin(): Plugin {
 
         if (method === "GET" && pathname === "/api/healthz") {
           sendJson(res, { status: "ok" });
+          return;
+        }
+
+        if (method === "GET" && pathname === "/api/hardware/middleware/info") {
+          try {
+            sendJson(res, await fetchHardwareMiddlewareInfo());
+          } catch (error) {
+            const config = getHardwareMiddlewareConfig();
+            sendJson(
+              res,
+              {
+                error: error instanceof Error ? error.message : "Unable to reach hardware middleware",
+                configuredBaseUrl: config.baseUrl || null,
+                timeoutMs: config.timeoutMs,
+              },
+              config.baseUrl ? 502 : 503,
+            );
+          }
+          return;
+        }
+
+        const hardwarePinMatch = pathname.match(/^\/api\/hardware\/middleware\/pins\/([^/]+)$/);
+        if (method === "GET" && hardwarePinMatch) {
+          try {
+            sendJson(res, await lookupHardwareContainerPin(decodeURIComponent(hardwarePinMatch[1])));
+          } catch (error) {
+            const config = getHardwareMiddlewareConfig();
+            sendJson(
+              res,
+              {
+                error: error instanceof Error ? error.message : "Unable to reach hardware middleware",
+                configuredBaseUrl: config.baseUrl || null,
+                timeoutMs: config.timeoutMs,
+                containerPin: decodeURIComponent(hardwarePinMatch[1]),
+              },
+              config.baseUrl ? 502 : 503,
+            );
+          }
           return;
         }
 

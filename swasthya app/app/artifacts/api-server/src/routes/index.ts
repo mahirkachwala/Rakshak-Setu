@@ -9,6 +9,7 @@ import recordsRouter from "./records";
 import aiRouter from "./ai";
 import dashboardRouter from "./dashboard";
 import assistantRouter from "./assistant";
+import middlewareRouter from "./middleware";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/records", recordsRouter);
 router.use("/ai", aiRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/assistant", assistantRouter);
+router.use("/hardware", middlewareRouter);
 
 export default router;

@@ -599,6 +599,28 @@ export default function Home() {
 
       <div className="p-4 space-y-4">
 
+        <Link href="/pin-status">
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-cyan-500 p-4 text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                <ShieldAlert size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">Cold chain safety</p>
+                <h3 className="mt-1 text-lg font-black tracking-tight">Check vaccine box breach status</h3>
+                <p className="mt-1 text-sm leading-6 text-blue-50">
+                  Enter a container PIN to view safe-for-use status, anomaly details, and live telemetry from the hardware box.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center">
+                <div className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700">
+                  Open
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+
         {/* MISSED VACCINES (if any) */}
         {missedVaccines.length > 0 && (
           <div>

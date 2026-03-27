@@ -361,6 +361,14 @@ export default function SwasthyaSewaChatPanel({ className }: { className?: strin
   }, [messages, loading]);
 
   const lastAssistantId = useMemo(() => messages.filter((message) => message.role === 'assistant').at(-1)?.id ?? null, [messages]);
+  const resetChat = useCallback(() => {
+    setMessages([{ id: createId(), role: 'assistant', text: introText, suggestions: introSuggestions, intent: 'GENERAL' }]);
+    setBookingFlow({ stage: 'idle' });
+    setBookingFacility(null);
+    setBookingSelection(null);
+    setGuideAutoListen(false);
+    speak(introText, false);
+  }, [introSuggestions, introText, speak]);
 
   return (
     <div className={cn('flex h-full flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-xl shadow-slate-900/8', className)}>
@@ -368,12 +376,12 @@ export default function SwasthyaSewaChatPanel({ className }: { className?: strin
         <div className="absolute -left-14 top-0 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
         <div className="relative flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-[11px] font-semibold backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">
               <Sparkles className="h-3.5 w-3.5" />
               Swasthya Sewa
             </div>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight">{parentName ? `${parentName.split(' ')[0]}, ` : ''}{assistantUi.status}</h2>
-            <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/85">{introText}</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white">{parentName ? `${parentName.split(' ')[0]}, ` : ''}{assistantUi.status}</h2>
+            <p className="mt-2 max-w-xs text-sm leading-relaxed text-cyan-50/95">{introText}</p>
           </div>
           <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Number.POSITIVE_INFINITY, duration: 3.4, ease: 'easeInOut' }} className="flex h-28 w-24 shrink-0 items-center justify-center rounded-[26px] bg-white/92 p-3 shadow-2xl shadow-slate-900/15 ring-1 ring-white/70">
             <SwasthyaSewaAvatar />
@@ -457,16 +465,18 @@ export default function SwasthyaSewaChatPanel({ className }: { className?: strin
       </ScrollArea>
 
       <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-3">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => { void guideRef.current?.replay(); }} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"><RotateCcw className="h-4 w-4" />{guideUi.hear}</button>
-          <button type="button" onClick={() => { void guideRef.current?.listen(); }} className="inline-flex h-10 items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 text-sm font-semibold text-primary transition hover:bg-primary/10"><Mic className="h-4 w-4" />{guideUi.answer}</button>
-          <button type="button" onClick={() => { setMessages([{ id: createId(), role: 'assistant', text: introText, suggestions: introSuggestions, intent: 'GENERAL' }]); setBookingFlow({ stage: 'idle' }); speak(introText, false); }} className="ml-auto inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">{assistantUi.reset}</button>
-        </div>
+        <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm">
+          <form onSubmit={(event) => { event.preventDefault(); void handleMessage(input); }} className="flex items-center gap-2">
+            <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={assistantUi.placeholder} className="h-12 rounded-full border-slate-200 bg-white px-4 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary/30" />
+            <Button type="submit" size="icon" className="h-12 w-12 rounded-full bg-gradient-to-br from-[#6c63ff] to-[#4d9fff] shadow-lg shadow-primary/20" disabled={!input.trim() || loading}><SendHorizonal className="h-5 w-5" /></Button>
+          </form>
 
-        <form onSubmit={(event) => { event.preventDefault(); void handleMessage(input); }} className="flex items-center gap-2">
-          <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={assistantUi.placeholder} className="h-12 rounded-full border-slate-200 bg-slate-50 px-4 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary/30" />
-          <Button type="submit" size="icon" className="h-12 w-12 rounded-full bg-gradient-to-br from-[#6c63ff] to-[#4d9fff] shadow-lg shadow-primary/20" disabled={!input.trim() || loading}><SendHorizonal className="h-5 w-5" /></Button>
-        </form>
+          <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+            <button type="button" onClick={() => { void guideRef.current?.replay(); }} className="inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"><RotateCcw className="h-4 w-4" />{guideUi.hear}</button>
+            <button type="button" onClick={() => { void guideRef.current?.listen(); }} className="inline-flex h-9 items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 text-sm font-semibold text-primary transition hover:bg-primary/10"><Mic className="h-4 w-4" />{guideUi.answer}</button>
+            <button type="button" onClick={resetChat} className="ml-auto inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">{assistantUi.reset}</button>
+          </div>
+        </div>
       </div>
 
       {bookingFacility && bookingSelection && <BookingModalConnected facility={bookingFacility} initialSelection={bookingSelection} onClose={() => { setBookingFacility(null); setBookingSelection(null); }} />}
