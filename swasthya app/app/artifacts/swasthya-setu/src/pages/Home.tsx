@@ -606,10 +606,10 @@ export default function Home() {
                 <ShieldAlert size={20} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">Cold chain safety</p>
-                <h3 className="mt-1 text-lg font-black tracking-tight">Check vaccine box breach status</h3>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">Vial safety</p>
+                <h3 className="mt-1 text-lg font-black tracking-tight">Check vial code safety</h3>
                 <p className="mt-1 text-sm leading-6 text-blue-50">
-                  Enter a container PIN to view safe-for-use status, anomaly details, and live telemetry from the hardware box.
+                  Enter the code printed at the bottom of the vial and see whether it is safe to use.
                 </p>
               </div>
               <div className="flex shrink-0 items-center">

@@ -1,190 +1,346 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import {
-  Activity,
-  AlertTriangle,
+  ArrowDown,
   ArrowLeft,
-  ExternalLink,
+  Check,
   Loader2,
-  MapPin,
-  Radio,
   Search,
-  ShieldAlert,
-  ShieldCheck,
-  Thermometer,
-  Wifi,
-  Lightbulb,
+  Volume2,
+  X,
 } from 'lucide-react';
 
-import { useAppStore } from '@/store';
+import SwasthyaSewaGuide, { type SwasthyaSewaGuideHandle } from '@/components/SwasthyaSewaGuide';
+import { useAppStore, type Language } from '@/store';
 
-type MiddlewareInfo = {
-  apiVersion?: string;
-  integrationMode?: string;
-  authRequired?: boolean;
-  endpoints?: {
-    pinLookup?: string;
+type MiddlewarePinPayload = {
+  lookup?: {
+    matched?: boolean;
+    value?: string;
+  };
+  container?: {
+    containerPin?: string;
+  };
+  outcome?: {
+    code?: string;
+    safeForUse?: boolean;
   };
 };
 
-type MiddlewarePinPayload = {
-  apiVersion?: string;
-  lookup?: {
-    type?: string;
-    value?: string;
-    matched?: boolean;
-  };
-  container?: {
-    deviceId?: string;
-    containerPin?: string;
-    boxId?: string;
-    shipmentId?: string;
-    publicIdentityId?: string;
-  };
-  transit?: {
-    routeId?: string | null;
-    configVersion?: string | null;
-    online?: boolean;
-    lastUpdated?: string | null;
-    currentCondition?: {
-      severity?: string;
-      label?: string;
-      issues?: string[];
-      activeAnomalyCount?: number;
-    };
-    useDecision?: {
-      severity?: string;
-      label?: string;
-      issues?: string[];
-      activeAnomalyCount?: number;
-      recordedAnomalyCount?: number;
-    };
-    anomalyHistorySummary?: {
-      totalCount?: number;
-      activeCount?: number;
-      latestDetectedAt?: string | null;
-    };
-  };
-  latestTelemetrySnapshot?: {
-    timestamp?: string | null;
-    sensors?: {
-      temperatureC?: number | null;
-      lightLux?: number | null;
-      gps?: {
-        fix?: boolean;
-        lat?: number | null;
-        lng?: number | null;
-        accuracyMeters?: number | null;
-        capturedAt?: string | null;
-      };
-    };
-    transport?: {
-      connected?: boolean;
-      medium?: string | null;
-      ssid?: string | null;
-      rssiDbm?: number | null;
-      localIp?: string | null;
-    };
-  };
-  latestRecordedAnomaly?: {
-    eventId?: string;
-    anomalyType?: string;
-    anomalyCode?: string;
-    anomalyLabel?: string;
-    status?: string;
-    detectedAt?: string | null;
-    lastObservedAt?: string | null;
-    resolvedAt?: string | null;
-    source?: string | null;
-    blockchain?: {
-      status?: string | null;
-      txHash?: string | null;
-      explorerUrl?: string | null;
-      network?: string | null;
-      anchoredAt?: string | null;
-    };
-  } | null;
-  outcome?: {
-    code?: string;
-    title?: string;
-    message?: string;
-    safeForUse?: boolean;
-    shouldHighlightAnomaly?: boolean;
-  };
-  appDisplay?: {
-    primaryStatus?: string;
-    secondaryStatus?: string;
-    shouldHighlightAnomaly?: boolean;
-  };
+type PinStatusCopy = {
+  back: string;
+  title: string;
+  helper: string;
+  codeHint: string;
+  pinLabel: string;
+  placeholder: string;
+  check: string;
+  listenAgain: string;
+  safeTitle: string;
+  safeSubtitle: string;
+  unsafeTitle: string;
+  unsafeSubtitle: string;
+  notFound: string;
+  unavailable: string;
+  voiceIntro: string;
+  voiceSafe: string;
+  voiceUnsafe: string;
+  voiceRetry: string;
+};
+
+const PIN_STATUS_COPY: Record<Language, PinStatusCopy> = {
+  en: {
+    back: 'Back',
+    title: 'Check vial safety by code',
+    helper: 'Enter the code printed at the bottom of the vial.',
+    codeHint: 'Enter this bottom code',
+    pinLabel: 'Vial code',
+    placeholder: 'Enter code',
+    check: 'Check',
+    listenAgain: 'Listen again',
+    safeTitle: 'Safe to use',
+    safeSubtitle: 'This vial is safe to use.',
+    unsafeTitle: 'Not safe to use',
+    unsafeSubtitle: 'This vial is not safe to use.',
+    notFound: 'Code not found. Please check the code and try again.',
+    unavailable: 'Unable to verify this code right now. Please try again.',
+    voiceIntro: 'Please enter the code printed at the bottom of this vial.',
+    voiceSafe: 'This vial is safe to use.',
+    voiceUnsafe: 'This vial is not safe to use.',
+    voiceRetry: 'I could not verify this code. Please check the code at the bottom of the vial and try again.',
+  },
+  hi: {
+    back: 'वापस',
+    title: 'कोड से वायल की सुरक्षा जांचें',
+    helper: 'वायल के नीचे छपा हुआ कोड दर्ज करें।',
+    codeHint: 'नीचे वाला कोड यहाँ डालें',
+    pinLabel: 'वायल कोड',
+    placeholder: 'कोड दर्ज करें',
+    check: 'जांचें',
+    listenAgain: 'फिर सुनें',
+    safeTitle: 'उपयोग के लिए सुरक्षित',
+    safeSubtitle: 'यह वायल उपयोग के लिए सुरक्षित है।',
+    unsafeTitle: 'उपयोग के लिए सुरक्षित नहीं',
+    unsafeSubtitle: 'यह वायल उपयोग के लिए सुरक्षित नहीं है।',
+    notFound: 'यह कोड नहीं मिला। कृपया कोड फिर से जांचें।',
+    unavailable: 'अभी इस कोड की जांच नहीं हो पा रही है। कृपया फिर कोशिश करें।',
+    voiceIntro: 'कृपया इस वायल के नीचे छपा हुआ कोड दर्ज करें।',
+    voiceSafe: 'यह वायल उपयोग के लिए सुरक्षित है।',
+    voiceUnsafe: 'यह वायल उपयोग के लिए सुरक्षित नहीं है।',
+    voiceRetry: 'मैं इस कोड की पुष्टि नहीं कर पाई। कृपया नीचे का कोड फिर से देखकर दर्ज करें।',
+  },
+  mr: {
+    back: 'मागे',
+    title: 'कोडने व्हायल सुरक्षित आहे का ते तपासा',
+    helper: 'व्हायलच्या तळाशी छापलेला कोड टाका.',
+    codeHint: 'हा तळाचा कोड टाका',
+    pinLabel: 'व्हायल कोड',
+    placeholder: 'कोड टाका',
+    check: 'तपासा',
+    listenAgain: 'पुन्हा ऐका',
+    safeTitle: 'वापरासाठी सुरक्षित',
+    safeSubtitle: 'ही व्हायल वापरण्यास सुरक्षित आहे.',
+    unsafeTitle: 'वापरासाठी सुरक्षित नाही',
+    unsafeSubtitle: 'ही व्हायल वापरण्यास सुरक्षित नाही.',
+    notFound: 'हा कोड सापडला नाही. कृपया कोड पुन्हा तपासा.',
+    unavailable: 'आत्ता हा कोड तपासता येत नाही. कृपया पुन्हा प्रयत्न करा.',
+    voiceIntro: 'कृपया या व्हायलच्या तळाशी छापलेला कोड टाका.',
+    voiceSafe: 'ही व्हायल वापरण्यास सुरक्षित आहे.',
+    voiceUnsafe: 'ही व्हायल वापरण्यास सुरक्षित नाही.',
+    voiceRetry: 'हा कोड पडताळता आला नाही. कृपया तळाशी असलेला कोड पुन्हा पाहून टाका.',
+  },
+  bn: {
+    back: 'ফিরুন',
+    title: 'কোড দিয়ে ভায়ালের সুরক্ষা দেখুন',
+    helper: 'ভায়ালের নিচে লেখা কোডটি লিখুন।',
+    codeHint: 'নিচের কোডটি দিন',
+    pinLabel: 'ভায়াল কোড',
+    placeholder: 'কোড লিখুন',
+    check: 'দেখুন',
+    listenAgain: 'আবার শুনুন',
+    safeTitle: 'ব্যবহারের জন্য নিরাপদ',
+    safeSubtitle: 'এই ভায়াল ব্যবহার করা নিরাপদ।',
+    unsafeTitle: 'ব্যবহারের জন্য নিরাপদ নয়',
+    unsafeSubtitle: 'এই ভায়াল ব্যবহার করা নিরাপদ নয়।',
+    notFound: 'এই কোডটি পাওয়া যায়নি। আবার দেখে লিখুন।',
+    unavailable: 'এখন এই কোড যাচাই করা যাচ্ছে না। আবার চেষ্টা করুন।',
+    voiceIntro: 'অনুগ্রহ করে এই ভায়ালের নিচে লেখা কোডটি লিখুন।',
+    voiceSafe: 'এই ভায়াল ব্যবহার করা নিরাপদ।',
+    voiceUnsafe: 'এই ভায়াল ব্যবহার করা নিরাপদ নয়।',
+    voiceRetry: 'আমি এই কোড যাচাই করতে পারিনি। অনুগ্রহ করে নিচের কোডটি আবার দেখে লিখুন।',
+  },
+  te: {
+    back: 'వెనక్కి',
+    title: 'కోడ్‌తో వైయల్ సురక్షితమా చూడండి',
+    helper: 'వైయల్ కింద ఉన్న కోడ్‌ను నమోదు చేయండి.',
+    codeHint: 'కింద ఉన్న కోడ్‌ను ఇవ్వండి',
+    pinLabel: 'వైయల్ కోడ్',
+    placeholder: 'కోడ్ నమోదు చేయండి',
+    check: 'చూడండి',
+    listenAgain: 'మళ్లీ వినండి',
+    safeTitle: 'వినియోగానికి సురక్షితం',
+    safeSubtitle: 'ఈ వైయల్ వినియోగానికి సురక్షితం.',
+    unsafeTitle: 'వినియోగానికి సురక్షితం కాదు',
+    unsafeSubtitle: 'ఈ వైయల్ వినియోగానికి సురక్షితం కాదు.',
+    notFound: 'ఈ కోడ్ కనబడలేదు. దయచేసి కోడ్‌ను మళ్లీ చూసి నమోదు చేయండి.',
+    unavailable: 'ప్రస్తుతం ఈ కోడ్‌ను పరిశీలించలేకపోతున్నాం. మళ్లీ ప్రయత్నించండి.',
+    voiceIntro: 'దయచేసి ఈ వైయల్ కింద ఉన్న కోడ్‌ను నమోదు చేయండి.',
+    voiceSafe: 'ఈ వైయల్ వినియోగానికి సురక్షితం.',
+    voiceUnsafe: 'ఈ వైయల్ వినియోగానికి సురక్షితం కాదు.',
+    voiceRetry: 'ఈ కోడ్‌ను ధృవీకరించలేకపోయాను. దయచేసి కింద ఉన్న కోడ్‌ను మళ్లీ చూసి నమోదు చేయండి.',
+  },
+  ta: {
+    back: 'பின்னால்',
+    title: 'கோடால் வயல் பாதுகாப்பை பார்க்கவும்',
+    helper: 'வயலின் அடியில் உள்ள கோடை உள்ளிடுங்கள்.',
+    codeHint: 'கீழே இருக்கும் கோடை இடுங்கள்',
+    pinLabel: 'வயல் கோடு',
+    placeholder: 'கோடை உள்ளிடுங்கள்',
+    check: 'சரி பார்க்க',
+    listenAgain: 'மீண்டும் கேளுங்கள்',
+    safeTitle: 'பயன்படுத்த பாதுகாப்பானது',
+    safeSubtitle: 'இந்த வயல் பயன்படுத்த பாதுகாப்பானது.',
+    unsafeTitle: 'பயன்படுத்த பாதுகாப்பில்லை',
+    unsafeSubtitle: 'இந்த வயல் பயன்படுத்த பாதுகாப்பில்லை.',
+    notFound: 'இந்த கோடு கிடைக்கவில்லை. தயவு செய்து மீண்டும் சரிபார்க்கவும்.',
+    unavailable: 'இப்போது இந்த கோடை சரிபார்க்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    voiceIntro: 'தயவு செய்து இந்த வயலின் அடியில் உள்ள கோடை உள்ளிடுங்கள்.',
+    voiceSafe: 'இந்த வயல் பயன்படுத்த பாதுகாப்பானது.',
+    voiceUnsafe: 'இந்த வயல் பயன்படுத்த பாதுகாப்பில்லை.',
+    voiceRetry: 'இந்த கோடை சரிபார்க்க முடியவில்லை. தயவு செய்து கீழே உள்ள கோடை மீண்டும் பார்த்து உள்ளிடுங்கள்.',
+  },
+  kn: {
+    back: 'ಹಿಂದೆ',
+    title: 'ಕೋಡ್ ಮೂಲಕ ವೈಯಲ್ ಸುರಕ್ಷತೆ ನೋಡಿ',
+    helper: 'ವೈಯಲ್ ಕೆಳಭಾಗದಲ್ಲಿರುವ ಕೋಡ್ ಅನ್ನು ನಮೂದಿಸಿ.',
+    codeHint: 'ಕೆಳಗಿನ ಕೋಡ್ ಹಾಕಿ',
+    pinLabel: 'ವೈಯಲ್ ಕೋಡ್',
+    placeholder: 'ಕೋಡ್ ನಮೂದಿಸಿ',
+    check: 'ಪರಿಶೀಲಿಸಿ',
+    listenAgain: 'ಮತ್ತೆ ಕೇಳಿ',
+    safeTitle: 'ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತ',
+    safeSubtitle: 'ಈ ವೈಯಲ್ ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತವಾಗಿದೆ.',
+    unsafeTitle: 'ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತವಲ್ಲ',
+    unsafeSubtitle: 'ಈ ವೈಯಲ್ ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತವಲ್ಲ.',
+    notFound: 'ಈ ಕೋಡ್ ಸಿಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪರಿಶೀಲಿಸಿ.',
+    unavailable: 'ಈಗ ಈ ಕೋಡ್ ಪರಿಶೀಲಿಸಲು ಆಗುತ್ತಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    voiceIntro: 'ದಯವಿಟ್ಟು ಈ ವೈಯಲ್‌ನ ಕೆಳಭಾಗದಲ್ಲಿರುವ ಕೋಡ್ ಅನ್ನು ನಮೂದಿಸಿ.',
+    voiceSafe: 'ಈ ವೈಯಲ್ ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತವಾಗಿದೆ.',
+    voiceUnsafe: 'ಈ ವೈಯಲ್ ಬಳಕೆಗಾಗಿ ಸುರಕ್ಷಿತವಲ್ಲ.',
+    voiceRetry: 'ಈ ಕೋಡ್ ದೃಢಪಡಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಕೆಳಗಿನ ಕೋಡ್ ಅನ್ನು ಮತ್ತೆ ನೋಡಿ ನಮೂದಿಸಿ.',
+  },
+  gu: {
+    back: 'પાછા',
+    title: 'કોડથી વાયલ સુરક્ષા તપાસો',
+    helper: 'વાયલની નીચે લખેલો કોડ દાખલ કરો.',
+    codeHint: 'નીચેનો કોડ અહીં નાખો',
+    pinLabel: 'વાયલ કોડ',
+    placeholder: 'કોડ દાખલ કરો',
+    check: 'તપાસો',
+    listenAgain: 'ફરી સાંભળો',
+    safeTitle: 'વપરાશ માટે સુરક્ષિત',
+    safeSubtitle: 'આ વાયલ વપરાશ માટે સુરક્ષિત છે.',
+    unsafeTitle: 'વપરાશ માટે સુરક્ષિત નથી',
+    unsafeSubtitle: 'આ વાયલ વપરાશ માટે સુરક્ષિત નથી.',
+    notFound: 'આ કોડ મળ્યો નથી. કૃપા કરીને ફરી તપાસો.',
+    unavailable: 'હમણાં આ કોડ ચકાસી શકાતો નથી. ફરી પ્રયત્ન કરો.',
+    voiceIntro: 'કૃપા કરીને આ વાયલની નીચે લખેલો કોડ દાખલ કરો.',
+    voiceSafe: 'આ વાયલ વપરાશ માટે સુરક્ષિત છે.',
+    voiceUnsafe: 'આ વાયલ વપરાશ માટે સુરક્ષિત નથી.',
+    voiceRetry: 'હું આ કોડ ચકાસી શકી નથી. કૃપા કરીને નીચેનો કોડ ફરી જોઈને દાખલ કરો.',
+  },
+  ml: {
+    back: 'തിരിച്ച്',
+    title: 'കോഡ് ഉപയോഗിച്ച് വയല്‍ സുരക്ഷ കാണുക',
+    helper: 'വയലിന്റെ അടിയില്‍ ഉള്ള കോഡ് നല്‍കുക.',
+    codeHint: 'താഴെയുള്ള കോഡ് ഇവിടെ ഇടുക',
+    pinLabel: 'വയല്‍ കോഡ്',
+    placeholder: 'കോഡ് നല്‍കുക',
+    check: 'പരിശോധിക്കുക',
+    listenAgain: 'വീണ്ടും കേൾക്കൂ',
+    safeTitle: 'ഉപയോഗത്തിന് സുരക്ഷിതം',
+    safeSubtitle: 'ഈ വയല്‍ ഉപയോഗിക്കാന്‍ സുരക്ഷിതമാണ്.',
+    unsafeTitle: 'ഉപയോഗത്തിന് സുരക്ഷിതമല്ല',
+    unsafeSubtitle: 'ഈ വയല്‍ ഉപയോഗിക്കാന്‍ സുരക്ഷിതമല്ല.',
+    notFound: 'ഈ കോഡ് കണ്ടെത്താനായില്ല. ദയവായി വീണ്ടും പരിശോധിക്കുക.',
+    unavailable: 'ഇപ്പോൾ ഈ കോഡ് പരിശോധിക്കാൻ കഴിയുന്നില്ല. വീണ്ടും ശ്രമിക്കുക.',
+    voiceIntro: 'ദയവായി ഈ വയലിന്റെ അടിയില്‍ ഉള്ള കോഡ് നല്‍കുക.',
+    voiceSafe: 'ഈ വയല്‍ ഉപയോഗിക്കാന്‍ സുരക്ഷിതമാണ്.',
+    voiceUnsafe: 'ഈ വയല്‍ ഉപയോഗിക്കാന്‍ സുരക്ഷിതമല്ല.',
+    voiceRetry: 'ഈ കോഡ് പരിശോധിക്കാനായില്ല. ദയവായി താഴെയുള്ള കോഡ് വീണ്ടും നോക്കി നല്‍കുക.',
+  },
+  pa: {
+    back: 'ਵਾਪਸ',
+    title: 'ਕੋਡ ਨਾਲ ਵਾਇਲ ਦੀ ਸੁਰੱਖਿਆ ਦੇਖੋ',
+    helper: 'ਵਾਇਲ ਦੇ ਹੇਠਾਂ ਲਿਖਿਆ ਕੋਡ ਦਰਜ ਕਰੋ।',
+    codeHint: 'ਹੇਠਾਂ ਵਾਲਾ ਕੋਡ ਇੱਥੇ ਪਾਓ',
+    pinLabel: 'ਵਾਇਲ ਕੋਡ',
+    placeholder: 'ਕੋਡ ਦਰਜ ਕਰੋ',
+    check: 'ਚੈੱਕ ਕਰੋ',
+    listenAgain: 'ਫਿਰ ਸੁਣੋ',
+    safeTitle: 'ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ',
+    safeSubtitle: 'ਇਹ ਵਾਇਲ ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ ਹੈ।',
+    unsafeTitle: 'ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ ਨਹੀਂ',
+    unsafeSubtitle: 'ਇਹ ਵਾਇਲ ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੈ।',
+    notFound: 'ਇਹ ਕੋਡ ਨਹੀਂ ਮਿਲਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਮੁੜ ਚੈੱਕ ਕਰੋ।',
+    unavailable: 'ਇਸ ਵੇਲੇ ਇਹ ਕੋਡ ਜਾਂਚਿਆ ਨਹੀਂ ਜਾ ਸਕਦਾ। ਕਿਰਪਾ ਕਰਕੇ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+    voiceIntro: 'ਕਿਰਪਾ ਕਰਕੇ ਇਸ ਵਾਇਲ ਦੇ ਹੇਠਾਂ ਲਿਖਿਆ ਕੋਡ ਦਰਜ ਕਰੋ।',
+    voiceSafe: 'ਇਹ ਵਾਇਲ ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ ਹੈ।',
+    voiceUnsafe: 'ਇਹ ਵਾਇਲ ਵਰਤੋਂ ਲਈ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੈ।',
+    voiceRetry: 'ਮੈਂ ਇਸ ਕੋਡ ਦੀ ਪੁਸ਼ਟੀ ਨਹੀਂ ਕਰ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੇਠਾਂ ਵਾਲਾ ਕੋਡ ਮੁੜ ਦੇਖ ਕੇ ਦਰਜ ਕਰੋ।',
+  },
+  or: {
+    back: 'ପଛକୁ',
+    title: 'କୋଡ୍ ଦେଇ ଭାଇଆଲ୍ ସୁରକ୍ଷା ଦେଖନ୍ତୁ',
+    helper: 'ଭାଇଆଲ୍‌ର ତଳେ ଥିବା କୋଡ୍ ଲେଖନ୍ତୁ।',
+    codeHint: 'ତଳର କୋଡ୍ ଏଠାରେ ଦିଅନ୍ତୁ',
+    pinLabel: 'ଭାଇଆଲ୍ କୋଡ୍',
+    placeholder: 'କୋଡ୍ ଲେଖନ୍ତୁ',
+    check: 'ଦେଖନ୍ତୁ',
+    listenAgain: 'ପୁଣି ଶୁଣନ୍ତୁ',
+    safeTitle: 'ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ',
+    safeSubtitle: 'ଏହି ଭାଇଆଲ୍ ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ।',
+    unsafeTitle: 'ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ ନୁହେଁ',
+    unsafeSubtitle: 'ଏହି ଭାଇଆଲ୍ ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ ନୁହେଁ।',
+    notFound: 'ଏହି କୋଡ୍ ମିଳିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଯାଞ୍ଚ କରନ୍ତୁ।',
+    unavailable: 'ଏବେ ଏହି କୋଡ୍ ଯାଞ୍ଚ କରାଯାଇପାରୁନାହିଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
+    voiceIntro: 'ଦୟାକରି ଏହି ଭାଇଆଲ୍‌ର ତଳେ ଥିବା କୋଡ୍ ଲେଖନ୍ତୁ।',
+    voiceSafe: 'ଏହି ଭାଇଆଲ୍ ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ।',
+    voiceUnsafe: 'ଏହି ଭାଇଆଲ୍ ବ୍ୟବହାର ପାଇଁ ସୁରକ୍ଷିତ ନୁହେଁ।',
+    voiceRetry: 'ମୁଁ ଏହି କୋଡ୍ ଯାଞ୍ଚ କରିପାରିଲି ନାହିଁ। ଦୟାକରି ତଳର କୋଡ୍ ପୁଣି ଦେଖି ଲେଖନ୍ତୁ।',
+  },
+  as: {
+    back: 'উভতি যাওক',
+    title: "ক'ডেৰে ভায়েলৰ সুৰক্ষা চাওক",
+    helper: "ভায়েলৰ তলত লিখা ক'ডটো লিখক।",
+    codeHint: "তলৰ ক'ডটো ইয়াত দিয়ক",
+    pinLabel: "ভায়েল ক'ড",
+    placeholder: "ক'ড লিখক",
+    check: 'চাওক',
+    listenAgain: 'আকৌ শুনক',
+    safeTitle: 'ব্যৱহাৰৰ বাবে সুৰক্ষিত',
+    safeSubtitle: 'এই ভায়েল ব্যৱহাৰৰ বাবে সুৰক্ষিত।',
+    unsafeTitle: 'ব্যৱহাৰৰ বাবে সুৰক্ষিত নহয়',
+    unsafeSubtitle: 'এই ভায়েল ব্যৱহাৰৰ বাবে সুৰক্ষিত নহয়।',
+    notFound: "এই ক'ডটো পোৱা নগ'ল। অনুগ্ৰহ কৰি পুনৰ চাই লিখক।",
+    unavailable: "এতিয়া এই ক'ডটো যাচাই কৰিব পৰা নাই। পুনৰ চেষ্টা কৰক।",
+    voiceIntro: "অনুগ্ৰহ কৰি এই ভায়েলৰ তলত লিখা ক'ডটো লিখক।",
+    voiceSafe: 'এই ভায়েল ব্যৱহাৰৰ বাবে সুৰক্ষিত।',
+    voiceUnsafe: 'এই ভায়েল ব্যৱহাৰৰ বাবে সুৰক্ষিত নহয়।',
+    voiceRetry: "মই এই ক'ডটো যাচাই কৰিব নোৱাৰিলোঁ। অনুগ্ৰহ কৰি তলৰ ক'ডটো পুনৰ চাই লিখক।",
+  },
 };
 
 const STORAGE_KEY = 'raksha-setu-container-pin';
 
-function formatDateTime(value: string | null | undefined, locale: string) {
-  if (!value) return 'Not available';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString(locale, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+function getOutcomeState(payload: MiddlewarePinPayload | null) {
+  if (!payload) return null;
+  return payload.outcome?.safeForUse || payload.outcome?.code === 'SAFE_FOR_USE' ? 'safe' : 'unsafe';
 }
 
-function formatNumber(value: number | null | undefined, digits = 2) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'Not available';
-  return value.toFixed(digits);
-}
-
-function getOutcomeTone(code: string | undefined) {
-  if (code === 'SAFE_FOR_USE') {
-    return {
-      icon: ShieldCheck,
-      card: 'border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100',
-      badge: 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300',
-      label: 'No breach recorded',
-    };
-  }
-
-  if (code === 'ANOMALY_RECORDED') {
-    return {
-      icon: ShieldAlert,
-      card: 'border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100',
-      badge: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300',
-      label: 'Breach recorded',
-    };
-  }
-
-  return {
-    icon: AlertTriangle,
-    card: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100',
-    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-    label: 'Review needed',
-  };
-}
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function VialPinDemo({ hint }: { hint: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-3 last:border-b-0 dark:border-gray-800">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      <div className="max-w-[62%] text-right text-sm font-medium text-gray-900 dark:text-white">{value}</div>
+    <div className="relative overflow-hidden rounded-[32px] border border-blue-100 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_55%),linear-gradient(180deg,_#f8fbff_0%,_#eff6ff_100%)] px-4 py-5 shadow-sm dark:border-blue-900/40 dark:bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_55%),linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.94)_100%)]">
+      <div className="relative mx-auto h-[270px] w-full max-w-[300px]">
+        <div className="absolute right-2 top-5 max-w-[132px] rounded-2xl bg-white px-3 py-2 text-[11px] font-bold leading-5 text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900/50">
+          {hint}
+        </div>
+
+        <div className="absolute right-[118px] top-12 h-[110px] w-px bg-blue-300 dark:bg-blue-700" />
+        <ArrowDown className="absolute right-[106px] top-[150px] h-8 w-8 animate-bounce text-blue-500 dark:text-blue-300" />
+
+        <div className="absolute left-1/2 top-2 flex -translate-x-1/2 flex-col items-center">
+          <div className="h-8 w-24 rounded-t-[18px] bg-gradient-to-b from-sky-500 to-blue-700 shadow-md" />
+          <div className="-mt-1 h-4 w-12 rounded-b-xl bg-blue-800/90" />
+        </div>
+
+        <div className="absolute left-1/2 top-10 h-[185px] w-[134px] -translate-x-1/2 rounded-[34px] border-[5px] border-blue-100 bg-white shadow-[0_30px_60px_-40px_rgba(37,99,235,0.55)] dark:border-slate-700 dark:bg-slate-900">
+          <div className="absolute inset-x-3 top-5 rounded-[22px] border border-sky-100 bg-gradient-to-br from-sky-50 to-blue-100 px-3 py-5 text-center shadow-inner dark:border-sky-900/40 dark:from-sky-950/40 dark:to-blue-950/40">
+            <div className="mx-auto h-9 w-9 rounded-full bg-blue-600/10" />
+            <div className="mt-3 space-y-1">
+              <div className="mx-auto h-2 w-16 rounded-full bg-blue-200 dark:bg-blue-900/40" />
+              <div className="mx-auto h-2 w-12 rounded-full bg-blue-100 dark:bg-blue-950/40" />
+            </div>
+          </div>
+
+          <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center shadow-sm dark:border-amber-900/40 dark:bg-amber-950/30">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-600 dark:text-amber-300">
+              PIN
+            </p>
+            <p className="mt-1 text-lg font-black tracking-[0.22em] text-amber-700 dark:text-amber-100">
+              472901
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
-  );
-}
-
-function IssuePill({ issue }: { issue: string }) {
-  return (
-    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-      {issue.replace(/_/g, ' ')}
-    </span>
   );
 }
 
 export default function PinStatus() {
   const language = useAppStore((state) => state.language);
-  const locale = language === 'en' ? 'en-IN' : `${language}-IN`;
+  const copy = PIN_STATUS_COPY[language] ?? PIN_STATUS_COPY.en;
+  const guideRef = useRef<SwasthyaSewaGuideHandle | null>(null);
   const apiBase = useMemo(() => import.meta.env.BASE_URL.replace(/\/$/, ''), []);
 
   const [pin, setPin] = useState(() => {
@@ -194,43 +350,33 @@ export default function PinStatus() {
       return '';
     }
   });
-  const [serviceInfo, setServiceInfo] = useState<MiddlewareInfo | null>(null);
-  const [serviceError, setServiceError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [payload, setPayload] = useState<MiddlewarePinPayload | null>(null);
-  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState('');
+  const [voiceReplayToken, setVoiceReplayToken] = useState(0);
+
+  const outcomeState = getOutcomeState(payload);
+  const voicePrompt = useMemo(() => {
+    if (lookupError) return copy.voiceRetry;
+    if (outcomeState === 'safe') return copy.voiceSafe;
+    if (outcomeState === 'unsafe') return copy.voiceUnsafe;
+    return copy.voiceIntro;
+  }, [copy, lookupError, outcomeState]);
 
   useEffect(() => {
-    let alive = true;
+    setVoiceReplayToken((value) => value + 1);
+  }, [voicePrompt]);
 
-    fetch(`${apiBase}/api/hardware/middleware/info`)
-      .then(async (response) => {
-        const text = await response.text();
-        const parsed = text ? JSON.parse(text) : {};
-        if (!response.ok) {
-          throw new Error(parsed?.error || `Middleware info request failed (${response.status})`);
-        }
-        if (alive) setServiceInfo(parsed as MiddlewareInfo);
-      })
-      .catch((error) => {
-        if (alive) setServiceError(error instanceof Error ? error.message : 'Unable to connect to middleware');
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [apiBase]);
-
-  const handleLookup = async (nextPin?: string) => {
-    const trimmedPin = (nextPin ?? pin).trim();
+  const handleLookup = async () => {
+    const trimmedPin = pin.trim();
     if (!trimmedPin) {
-      setLookupError('Enter the container PIN first.');
       setPayload(null);
+      setLookupError(copy.notFound);
       return;
     }
 
     setLoading(true);
-    setLookupError(null);
+    setLookupError('');
 
     try {
       const response = await fetch(
@@ -240,77 +386,80 @@ export default function PinStatus() {
       const parsed = text ? JSON.parse(text) : {};
 
       if (!response.ok) {
-        throw new Error(parsed?.error || `PIN lookup failed (${response.status})`);
+        throw new Error('lookup_failed');
       }
 
-      setPayload(parsed as MiddlewarePinPayload);
+      const nextPayload = parsed as MiddlewarePinPayload;
+      if (nextPayload.lookup?.matched === false) {
+        setPayload(null);
+        setLookupError(copy.notFound);
+        return;
+      }
+
+      setPayload(nextPayload);
       try {
         localStorage.setItem(STORAGE_KEY, trimmedPin);
       } catch {
-        // Ignore local persistence issues.
+        // Ignore local storage failures.
       }
-    } catch (error) {
+    } catch {
       setPayload(null);
-      setLookupError(error instanceof Error ? error.message : 'Unable to fetch PIN status right now.');
+      setLookupError(copy.unavailable);
     } finally {
       setLoading(false);
     }
   };
 
-  const tone = getOutcomeTone(payload?.outcome?.code);
-  const StatusIcon = tone.icon;
-  const issues = payload?.transit?.useDecision?.issues ?? [];
-  const liveGps = payload?.latestTelemetrySnapshot?.sensors?.gps;
-  const transport = payload?.latestTelemetrySnapshot?.transport;
-  const anomaly = payload?.latestRecordedAnomaly;
+  const isSafe = outcomeState === 'safe';
 
   return (
     <div className="min-h-full bg-gray-50 px-4 py-4 dark:bg-gray-950">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <div className="flex items-center justify-between">
+      <SwasthyaSewaGuide
+        ref={guideRef}
+        prompt={voicePrompt}
+        language={language}
+        replayToken={voiceReplayToken}
+        autoSpeak
+        showUi={false}
+      />
+
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+        <div className="flex items-center">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
             <ArrowLeft size={16} />
-            Back to home
+            {copy.back}
           </Link>
-          <div className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-gray-900 dark:text-gray-400">
-            Raksha Setu hardware status
-          </div>
         </div>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <section className="rounded-[32px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">
-                Vaccine box safety
-              </p>
-              <h1 className="mt-2 text-2xl font-black tracking-tight text-gray-900 dark:text-white">
-                Check breach status by container PIN
+              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                {copy.title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Enter the vaccine container PIN to see safe-for-use status, latest breach or anomaly details,
-                telemetry snapshot, and blockchain proof when available.
+              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                {copy.helper}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs dark:border-gray-700 dark:bg-gray-800/80">
-              <p className="font-semibold text-gray-700 dark:text-gray-200">Middleware</p>
-              <p className="mt-1 text-gray-500 dark:text-gray-400">
-                {serviceError
-                  ? 'Unavailable'
-                  : serviceInfo
-                    ? `Connected${serviceInfo.authRequired ? ' (auth enabled)' : ''}`
-                    : 'Checking connection...'}
-              </p>
-              {serviceInfo?.apiVersion && (
-                <p className="mt-1 text-gray-400 dark:text-gray-500">API {serviceInfo.apiVersion}</p>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => void guideRef.current?.replay()}
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+            >
+              <Volume2 size={14} />
+              {copy.listenAgain}
+            </button>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 md:flex-row">
-            <label className="flex-1">
+          <div className="mt-5">
+            <VialPinDemo hint={copy.codeHint} />
+          </div>
+
+          <div className="mt-5">
+            <label className="block">
               <span className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                Container PIN
+                {copy.pinLabel}
               </span>
               <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white dark:border-gray-700 dark:bg-gray-800 dark:focus-within:bg-gray-900">
                 <Search size={18} className="text-gray-400" />
@@ -324,314 +473,70 @@ export default function PinStatus() {
                     }
                   }}
                   inputMode="numeric"
-                  placeholder="Example: 472901"
+                  placeholder={copy.placeholder}
                   className="w-full bg-transparent text-base font-semibold text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
                 />
               </div>
             </label>
 
-            <div className="flex gap-2 md:items-end">
-              <button
-                type="button"
-                onClick={() => void handleLookup()}
-                disabled={loading}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                Check status
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPin('472901');
-                  void handleLookup('472901');
-                }}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-              >
-                Use demo PIN
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => void handleLookup()}
+              disabled={loading}
+              className="mt-3 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              {copy.check}
+            </button>
           </div>
 
-          {serviceError && (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              {serviceError}
-            </div>
-          )}
-
           {lookupError && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
               {lookupError}
             </div>
           )}
         </section>
 
-        {!payload && !loading && !lookupError && (
-          <section className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <ShieldCheck size={18} className="text-green-600 dark:text-green-400" />
-              <h2 className="mt-3 text-sm font-bold text-gray-900 dark:text-white">Safe for use</h2>
-              <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Shows whether the vaccine box is currently safe to use or if manual review is needed.
+        {payload && outcomeState && (
+          <section
+            className={`rounded-[32px] border p-6 shadow-sm ${
+              isSafe
+                ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className={`flex h-28 w-28 items-center justify-center rounded-full bg-white shadow-sm ${
+                  isSafe
+                    ? 'text-green-600 dark:bg-gray-900 dark:text-green-400'
+                    : 'text-red-600 dark:bg-gray-900 dark:text-red-400'
+                }`}
+              >
+                {isSafe ? <Check size={72} strokeWidth={3.5} /> : <X size={72} strokeWidth={3.5} />}
+              </div>
+
+              <h2
+                className={`mt-5 text-3xl font-black tracking-tight ${
+                  isSafe ? 'text-green-800 dark:text-green-100' : 'text-red-800 dark:text-red-100'
+                }`}
+              >
+                {isSafe ? copy.safeTitle : copy.unsafeTitle}
+              </h2>
+
+              <p
+                className={`mt-2 text-base font-semibold ${
+                  isSafe ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'
+                }`}
+              >
+                {isSafe ? copy.safeSubtitle : copy.unsafeSubtitle}
               </p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <ShieldAlert size={18} className="text-red-600 dark:text-red-400" />
-              <h2 className="mt-3 text-sm font-bold text-gray-900 dark:text-white">Breach details</h2>
-              <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Displays the latest recorded anomaly, when it happened, and whether blockchain proof exists.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <Activity size={18} className="text-blue-600 dark:text-blue-400" />
-              <h2 className="mt-3 text-sm font-bold text-gray-900 dark:text-white">Live telemetry</h2>
-              <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Includes temperature, light exposure, GPS snapshot, transport connection, and latest update time.
-              </p>
+
+              <div className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200">
+                {payload.container?.containerPin || payload.lookup?.value || pin.trim()}
+              </div>
             </div>
           </section>
-        )}
-
-        {payload && (
-          <>
-            <section className={`rounded-3xl border p-5 shadow-sm ${tone.card}`}>
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-2xl bg-white/70 p-3 dark:bg-black/10">
-                    <StatusIcon size={24} />
-                  </div>
-                  <div>
-                    <div className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${tone.badge}`}>
-                      {tone.label}
-                    </div>
-                    <h2 className="mt-3 text-2xl font-black tracking-tight">
-                      {payload.appDisplay?.primaryStatus || payload.outcome?.title || 'Container status'}
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-6">
-                      {payload.appDisplay?.secondaryStatus || payload.outcome?.message || 'Latest middleware response received successfully.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid min-w-[220px] grid-cols-2 gap-2">
-                  <div className="rounded-2xl bg-white/70 px-3 py-3 text-sm dark:bg-black/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">PIN</p>
-                    <p className="mt-1 font-bold">{payload.container?.containerPin || payload.lookup?.value || '-'}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/70 px-3 py-3 text-sm dark:bg-black/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Outcome</p>
-                    <p className="mt-1 font-bold">{payload.outcome?.code || '-'}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/70 px-3 py-3 text-sm dark:bg-black/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Safe for use</p>
-                    <p className="mt-1 font-bold">{payload.outcome?.safeForUse ? 'Yes' : 'No'}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/70 px-3 py-3 text-sm dark:bg-black/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Last updated</p>
-                    <p className="mt-1 font-bold">
-                      {formatDateTime(payload.transit?.lastUpdated || payload.latestTelemetrySnapshot?.timestamp, locale)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
-              <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Container details</h3>
-                <div className="mt-3">
-                  <DetailRow label="Device ID" value={payload.container?.deviceId || 'Not available'} />
-                  <DetailRow label="Box ID" value={payload.container?.boxId || 'Not available'} />
-                  <DetailRow label="Shipment ID" value={payload.container?.shipmentId || 'Not available'} />
-                  <DetailRow label="Public identity" value={payload.container?.publicIdentityId || 'Not available'} />
-                  <DetailRow label="Route ID" value={payload.transit?.routeId || 'Not available'} />
-                  <DetailRow label="Config version" value={payload.transit?.configVersion || 'Not available'} />
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Breach status</h3>
-                <div className="mt-3">
-                  <DetailRow label="Current condition" value={payload.transit?.currentCondition?.label || 'Not available'} />
-                  <DetailRow label="Use decision" value={payload.transit?.useDecision?.label || 'Not available'} />
-                  <DetailRow label="Box online" value={payload.transit?.online ? 'Online' : 'Offline'} />
-                  <DetailRow
-                    label="Recorded anomalies"
-                    value={String(payload.transit?.anomalyHistorySummary?.totalCount ?? payload.transit?.useDecision?.recordedAnomalyCount ?? 0)}
-                  />
-                  <DetailRow
-                    label="Active anomalies"
-                    value={String(payload.transit?.anomalyHistorySummary?.activeCount ?? payload.transit?.useDecision?.activeAnomalyCount ?? 0)}
-                  />
-                </div>
-
-                {issues.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Flags</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {issues.map((issue) => (
-                        <IssuePill key={issue} issue={issue} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="grid gap-4 lg:grid-cols-[1.05fr,0.95fr]">
-              <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="flex items-center gap-2">
-                  <Thermometer size={18} className="text-rose-500" />
-                  <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Live telemetry</h3>
-                </div>
-                <div className="mt-3">
-                  <DetailRow
-                    label="Temperature"
-                    value={payload.latestTelemetrySnapshot?.sensors?.temperatureC != null
-                      ? `${formatNumber(payload.latestTelemetrySnapshot?.sensors?.temperatureC, 2)} C`
-                      : 'Not available'}
-                  />
-                  <DetailRow
-                    label="Light"
-                    value={payload.latestTelemetrySnapshot?.sensors?.lightLux != null
-                      ? `${formatNumber(payload.latestTelemetrySnapshot?.sensors?.lightLux, 2)} lux`
-                      : 'Not available'}
-                  />
-                  <DetailRow
-                    label="GPS fix"
-                    value={liveGps?.fix ? 'Available' : 'Not available'}
-                  />
-                  <DetailRow
-                    label="Coordinates"
-                    value={liveGps?.lat != null && liveGps?.lng != null
-                      ? `${formatNumber(liveGps.lat, 5)}, ${formatNumber(liveGps.lng, 5)}`
-                      : 'Not available'}
-                  />
-                  <DetailRow
-                    label="GPS accuracy"
-                    value={liveGps?.accuracyMeters != null ? `${Math.round(liveGps.accuracyMeters)} m` : 'Not available'}
-                  />
-                  <DetailRow
-                    label="Telemetry time"
-                    value={formatDateTime(payload.latestTelemetrySnapshot?.timestamp, locale)}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="flex items-center gap-2">
-                  <Wifi size={18} className="text-blue-500" />
-                  <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Transport and link</h3>
-                </div>
-                <div className="mt-3">
-                  <DetailRow label="Connected" value={transport?.connected ? 'Yes' : 'No'} />
-                  <DetailRow label="Medium" value={transport?.medium || 'Not available'} />
-                  <DetailRow label="SSID" value={transport?.ssid || 'Not available'} />
-                  <DetailRow label="RSSI" value={transport?.rssiDbm != null ? `${transport.rssiDbm} dBm` : 'Not available'} />
-                  <DetailRow label="Local IP" value={transport?.localIp || 'Not available'} />
-                  <DetailRow
-                    label="Latest anomaly time"
-                    value={formatDateTime(payload.transit?.anomalyHistorySummary?.latestDetectedAt, locale)}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {anomaly && (
-              <section className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-900 dark:bg-gray-900">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 dark:bg-red-950/50 dark:text-red-300">
-                      <Lightbulb size={12} />
-                      Latest recorded anomaly
-                    </div>
-                    <h3 className="mt-3 text-xl font-black tracking-tight text-gray-900 dark:text-white">
-                      {anomaly.anomalyLabel || anomaly.anomalyCode || 'Anomaly recorded'}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      This section shows the latest breach or anomaly captured for the container PIN.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-2 text-sm md:min-w-[240px]">
-                    <div className="rounded-2xl bg-red-50 px-3 py-2 dark:bg-red-950/30">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">Status</p>
-                      <p className="mt-1 font-bold text-red-900 dark:text-red-100">{anomaly.status || 'Not available'}</p>
-                    </div>
-                    <div className="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-gray-800">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Source</p>
-                      <p className="mt-1 font-bold text-gray-900 dark:text-white">{anomaly.source || 'Not available'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                    <DetailRow label="Event ID" value={anomaly.eventId || 'Not available'} />
-                    <DetailRow label="Type" value={anomaly.anomalyType || 'Not available'} />
-                    <DetailRow label="Detected at" value={formatDateTime(anomaly.detectedAt, locale)} />
-                    <DetailRow label="Last observed" value={formatDateTime(anomaly.lastObservedAt, locale)} />
-                    <DetailRow label="Resolved at" value={formatDateTime(anomaly.resolvedAt, locale)} />
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                    <DetailRow label="Blockchain status" value={anomaly.blockchain?.status || 'Not available'} />
-                    <DetailRow label="Network" value={anomaly.blockchain?.network || 'Not available'} />
-                    <DetailRow label="Anchored at" value={formatDateTime(anomaly.blockchain?.anchoredAt, locale)} />
-                    <DetailRow
-                      label="Explorer"
-                      value={anomaly.blockchain?.explorerUrl ? (
-                        <a
-                          href={anomaly.blockchain.explorerUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-400"
-                        >
-                          Open proof <ExternalLink size={13} />
-                        </a>
-                      ) : 'Not available'}
-                    />
-                  </div>
-                </div>
-              </section>
-            )}
-
-            <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                  <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                    <Radio size={16} className="text-blue-500" />
-                    <h3 className="text-sm font-bold">Connection check</h3>
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    Middleware endpoint is being used as the stable source instead of directly coupling the app to device internals.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                  <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                    <MapPin size={16} className="text-emerald-500" />
-                    <h3 className="text-sm font-bold">GPS snapshot</h3>
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    {liveGps?.lat != null && liveGps?.lng != null
-                      ? `Latest box coordinates: ${formatNumber(liveGps.lat, 5)}, ${formatNumber(liveGps.lng, 5)}`
-                      : 'No recent GPS coordinates were provided in the latest telemetry snapshot.'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                  <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                    <Activity size={16} className="text-amber-500" />
-                    <h3 className="text-sm font-bold">Decision summary</h3>
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    {payload.transit?.useDecision?.label || payload.outcome?.message || 'No decision summary available.'}
-                  </p>
-                </div>
-              </div>
-            </section>
-          </>
         )}
       </div>
     </div>
